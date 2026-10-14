@@ -1,0 +1,33 @@
+{
+  "name": "shreeji-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shreeji KYC & Device Management - Node.js microservices",
+  "scripts": {
+    "install-all": "node ./dev/scripts/install-all.js",
+    "db:init": "node ./dev/scripts/db-init.js",
+    "dev": "node ./dev/scripts/start-dev.js",
+    "start": "pm2 start ecosystem.config.js",
+    "stop": "pm2 delete ecosystem.config.js"
+  },
+  "author": "Shreeji",
+  "license": "ISC",
+  "comment": "Root deps are the third-party packages used by the shared common/ code (it resolves from here), plus the db-init/dev tooling. Each microservice has its own node_modules for its service-local requires.",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.11.3",
+    "sequelize": "^6.37.3",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.1.4",
+    "pm2": "^5.4.2"
+  }
+}
