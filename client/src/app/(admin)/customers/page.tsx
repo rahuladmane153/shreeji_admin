@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, ChevronRight } from 'lucide-react';
+import { Search, MoreVertical, Eye, KeyRound } from 'lucide-react';
 import { api, apiError } from '@/lib/api';
 import { StatusBadge, Spinner, EmptyState, Pagination, PageHeader, FadeIn } from '@/components/shared';
 import { Card } from '@/components/ui/card';
@@ -10,6 +10,14 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import ResetPasswordDialog from '@/components/ResetPasswordDialog';
 import { fmtDate, initials } from '@/lib/format';
 
 type Customer = {
@@ -34,6 +42,7 @@ export default function CustomersPage() {
   const [search, setSearch] = useState('');
   const [kyc, setKyc] = useState('all');
   const [page, setPage] = useState(1);
+  const [resetCustomer, setResetCustomer] = useState<Customer | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -123,7 +132,23 @@ export default function CustomersPage() {
                     <TableCell><StatusBadge status={c.kyc_status} /></TableCell>
                     <TableCell><StatusBadge status={c.status} /></TableCell>
                     <TableCell className="text-muted-foreground">{fmtDate(c.onboarded_at)}</TableCell>
-                    <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push(`/customers/${c.id}`)}>
+                            <Eye className="h-4 w-4" /> View details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setResetCustomer(c)}>
+                            <KeyRound className="h-4 w-4" /> Reset password
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -132,6 +157,12 @@ export default function CustomersPage() {
           <Pagination meta={meta} onPage={setPage} />
         </Card>
       </FadeIn>
+
+      <ResetPasswordDialog
+        customer={resetCustomer}
+        open={!!resetCustomer}
+        onOpenChange={(o) => !o && setResetCustomer(null)}
+      />
     </div>
   );
 }

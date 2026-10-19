@@ -9,8 +9,13 @@ module.exports = {
   }),
 
   customerRegister: Joi.object({
-    first_name: Joi.string().trim().min(1).max(80).required(),
-    last_name: Joi.string().trim().min(1).max(80).required(),
+    full_name: Joi.string()
+      .trim()
+      .min(3)
+      .max(150)
+      .pattern(/^[A-Za-z][A-Za-z .']*$/)
+      .required()
+      .messages({ 'string.pattern.base': 'Full name can contain only letters, spaces, dot and apostrophe' }),
     mobile: mobile.required(),
     password: Joi.string().min(6).max(128).required(),
     confirm_password: Joi.string().valid(Joi.ref('password')).required().messages({
@@ -18,22 +23,9 @@ module.exports = {
     }),
   }),
 
-  sendOtp: Joi.object({
+  customerLogin: Joi.object({
     mobile: mobile.required(),
-  }),
-
-  verifyOtp: Joi.object({
-    mobile: mobile.required(),
-    otp: Joi.string().length(6).pattern(/^\d+$/).required(),
-    // Optional device info to register the device at login time
-    device: Joi.object({
-      android_id: Joi.string().max(100),
-      device_model: Joi.string().max(100),
-      manufacturer: Joi.string().max(100),
-      os_version: Joi.string().max(50),
-      app_version: Joi.string().max(50),
-      fcm_token: Joi.string().max(500),
-    }).optional(),
+    password: Joi.string().max(128).required(),
   }),
 
   refresh: Joi.object({ refresh_token: Joi.string().required() }),

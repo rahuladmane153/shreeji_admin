@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Smartphone, Lock, Unlock, ShieldOff, ShieldCheck, Trash2, Ban, Power } from 'lucide-react';
+import { ArrowLeft, Smartphone, Lock, Unlock, ShieldOff, ShieldCheck, Trash2, Ban, Power, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, apiError } from '@/lib/api';
 import { Spinner, StatusBadge, FadeIn } from '@/components/shared';
+import ResetPasswordDialog from '@/components/ResetPasswordDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -38,6 +39,7 @@ export default function DeviceDetailPage() {
   const [history, setHistory] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
+  const [resetOpen, setResetOpen] = useState(false);
 
   function load() {
     api.get(`/device/devices/${id}`).then((res) => setD(res.data.data)).catch((err) => setError(apiError(err)));
@@ -64,9 +66,16 @@ export default function DeviceDetailPage() {
 
   return (
     <FadeIn className="space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => router.back()}>
-        <ArrowLeft className="h-4 w-4" /> Back
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
+        {d.customer?.id && (
+          <Button variant="outline" size="sm" onClick={() => setResetOpen(true)}>
+            <KeyRound className="h-4 w-4" /> Reset Customer Password
+          </Button>
+        )}
+      </div>
 
       <Card>
         <CardContent className="flex flex-wrap items-start justify-between gap-4 p-6">
@@ -93,6 +102,39 @@ export default function DeviceDetailPage() {
           <Field label="Uninstall Protection" value={d.uninstall_protection ? 'Enabled 🔒' : 'Disabled 🔓'} />
           <Field label="Last Seen" value={fmtDate(d.last_seen)} />
           <Field label="Registered" value={fmtDate(d.registered_at)} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Synced Contacts</CardTitle>
+          <CardDescription>
+            {d.contacts?.length || 0} contacts · Last synced {fmtDate(d.contacts_synced_at)}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {d.contacts?.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Phone Numbers</TableHead>
+                  <TableHead>Synced</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {d.contacts.map((contact: any) => (
+                  <TableRow key={contact.contact_id}>
+                    <TableCell className="font-medium">{contact.display_name || 'Unnamed contact'}</TableCell>
+                    <TableCell>{Array.isArray(contact.phones) ? contact.phones.join(', ') : '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{fmtDate(contact.synced_at)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="p-6 text-sm text-muted-foreground">No contacts synced from this device.</p>
+          )}
         </CardContent>
       </Card>
 
@@ -146,6 +188,14 @@ export default function DeviceDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {d.customer?.id && (
+        <ResetPasswordDialog
+          customer={{ id: d.customer.id, full_name: d.customer.full_name, mobile: d.customer.mobile }}
+          open={resetOpen}
+          onOpenChange={setResetOpen}
+        />
+      )}
     </FadeIn>
   );
 }

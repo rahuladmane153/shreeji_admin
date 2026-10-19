@@ -14,6 +14,9 @@ module.exports = (router) => {
   // Every mobile route requires a customer token
   router.use(authenticate, requireType('customer'));
 
+  // Dashboard (KYC status, device, quote of the day)
+  router.get('/dashboard', validate(schema.androidIdQuery, 'query'), ctrl.getDashboard);
+
   // Profile
   router.get('/profile', ctrl.getProfile);
   router.put('/profile', validate(schema.updateProfile), ctrl.updateProfile);
@@ -22,7 +25,10 @@ module.exports = (router) => {
   router.post('/consents', validate(schema.consent), ctrl.recordConsents);
 
   // Device
+  router.get('/devices/status', validate(schema.androidIdQuery, 'query'), ctrl.deviceStatus);
   router.post('/devices/register', validate(schema.registerDevice), ctrl.registerDevice);
+  router.get('/devices/:deviceId/contacts', ctrl.getDeviceContacts);
+  router.put('/devices/:deviceId/contacts', validate(schema.deviceContacts), ctrl.saveDeviceContacts);
   router.post('/devices/:deviceId/heartbeat', validate(schema.heartbeat), ctrl.heartbeat);
   router.get('/devices/:deviceId/commands', ctrl.pollCommands);
   router.post('/devices/:deviceId/commands/:commandUuid/result', validate(schema.commandResult), ctrl.reportCommandResult);

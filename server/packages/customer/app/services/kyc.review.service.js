@@ -51,6 +51,7 @@ async function listApplications(query) {
         : null,
       aadhaar_masked: maskAadhaar(a.aadhaar_last4),
       pan_number: a.pan_number,
+      verification: a.ocr_data?.overall || null,
       submitted_at: a.submitted_at,
       reviewed_at: a.reviewed_at,
     })),
@@ -79,6 +80,8 @@ async function getApplication(id) {
     pan_number: a.pan_number,
     declaration_accepted: a.declaration_accepted,
     selfie_liveness: a.selfie_liveness,
+    // Automatic document checks { overall, checks[], edited_fields[] }
+    verification: a.ocr_data || null,
     submitted_at: a.submitted_at,
     reviewed_at: a.reviewed_at,
     review_remarks: a.review_remarks,
@@ -98,7 +101,7 @@ async function getApplication(id) {
       doc_type: d.doc_type,
       file_url: `/uploads/${d.file_path}`,
       mime_type: d.mime_type,
-      uploaded_at: d.created_at,
+      uploaded_at: d.createdAt,
     })),
   };
 }

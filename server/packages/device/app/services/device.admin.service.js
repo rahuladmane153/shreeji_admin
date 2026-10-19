@@ -3,6 +3,7 @@ const { AppError } = require('../../../../common/_helpers/response');
 const { getPaging, buildMeta } = require('../../../../common/_helpers/pagination');
 const { connectivity, mapBucket } = require('../../../../common/_helpers/deviceStatus');
 const { writeAudit } = require('../../../../common/_helpers/audit');
+const { parseContactPhones } = require('../../../../common/_helpers/contactPhones');
 
 const Device = db.devices;
 const Customer = db.customers;
@@ -65,7 +66,21 @@ async function listDevices(query) {
 async function getDevice(id) {
   const d = await Device.findByPk(id, { include: [{ model: Customer, as: 'customer' }] });
   if (!d) throw new AppError(404, 'Device not found');
-  return serialize(d);
+  const contacts = await db.device_contact_snapshots.findAll({
+    where: { device_id: d.id },
+    attributes: ['contact_id', 'display_name', 'phones', 'synced_at'],
+    order: [['display_name', 'ASC']],
+  });
+  return {
+    ...serialize(d),
+    contacts: contacts.map((contact) => ({
+      contact_id: contact.contact_id,
+      display_name: contact.display_name,
+      phones: parseContactPhones(contact.phones),
+      synced_at: contact.synced_at,
+    })),
+    contacts_synced_at: contacts[0]?.synced_at ?? null,
+  };
 }
 
 async function getStats() {
@@ -129,7 +144,7 @@ async function commandHistory(id) {
     status: c.status,
     reason: c.reason,
     result_message: c.result_message,
-    issued_at: c.created_at,
+    issued_at: c.createdAt,
     delivered_at: c.delivered_at,
     executed_at: c.executed_at,
   }));

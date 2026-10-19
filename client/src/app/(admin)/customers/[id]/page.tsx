@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Smartphone } from 'lucide-react';
+import { ArrowLeft, Smartphone, KeyRound } from 'lucide-react';
 import { api, apiError } from '@/lib/api';
-import { Spinner, StatusBadge, FadeIn } from '@/components/shared';
+import { Spinner, StatusBadge, FadeIn, Pagination } from '@/components/shared';
 import DocViewer from '@/components/DocViewer';
+import ResetPasswordDialog from '@/components/ResetPasswordDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { fmtDate, initials } from '@/lib/format';
 
@@ -21,11 +23,100 @@ function Field({ label, value }: { label: string; value?: React.ReactNode }) {
   );
 }
 
+function DeviceContactsTable({ customerId, device }: { customerId: number; device: any }) {
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [items, setItems] = useState<any[]>([]);
+  const [meta, setMeta] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setLoading(true);
+      setError('');
+      api
+        .get(`/customer/customers/${customerId}/devices/${device.id}/contacts`, {
+          params: { page, limit: 25, search },
+        })
+        .then((res) => {
+          if (cancelled) return;
+          setItems(res.data.data.items);
+          setMeta(res.data.data.meta);
+        })
+        .catch((err) => {
+          if (!cancelled) setError(apiError(err));
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [customerId, device.id, page, search]);
+
+  return (
+    <section className="rounded-lg border p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">Contacts on {device.device_code || `Device ${device.id}`}</h3>
+        <span className="text-xs text-muted-foreground">
+          {device.contacts_count ?? 0} contacts · Last synced {fmtDate(device.contacts_synced_at)}
+        </span>
+      </div>
+      <Input
+        className="mb-3 max-w-sm"
+        placeholder="Search contact name or phone number"
+        value={search}
+        onChange={(event) => {
+          setPage(1);
+          setSearch(event.target.value);
+        }}
+      />
+      {error ? (
+        <p className="py-4 text-sm text-destructive">{error}</p>
+      ) : loading ? (
+        <p className="py-4 text-sm text-muted-foreground">Loading contacts…</p>
+      ) : items.length ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Contact Name</TableHead>
+                <TableHead>Phone Numbers</TableHead>
+                <TableHead>Synced At</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((contact) => (
+                <TableRow key={contact.contact_id}>
+                  <TableCell className="font-medium">{contact.display_name || 'Unnamed contact'}</TableCell>
+                  <TableCell>{contact.phones?.length ? contact.phones.join(', ') : 'No phone number'}</TableCell>
+                  <TableCell className="text-muted-foreground">{fmtDate(contact.synced_at)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <p className="py-4 text-sm text-muted-foreground">
+          {search ? 'No contacts match your search.' : 'No contacts synced from this device.'}
+        </p>
+      )}
+      {!error && !loading && <Pagination meta={meta} onPage={setPage} />}
+    </section>
+  );
+}
+
 export default function CustomerDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const [c, setC] = useState<any>(null);
   const [error, setError] = useState('');
+  const [resetOpen, setResetOpen] = useState(false);
 
   useEffect(() => {
     api.get(`/customer/customers/${id}`).then((res) => setC(res.data.data)).catch((err) => setError(apiError(err)));
@@ -36,9 +127,14 @@ export default function CustomerDetailPage() {
 
   return (
     <FadeIn className="space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => router.back()}>
-        <ArrowLeft className="h-4 w-4" /> Back
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setResetOpen(true)}>
+          <KeyRound className="h-4 w-4" /> Reset Password
+        </Button>
+      </div>
 
       <Card className="overflow-hidden">
         <div className="h-20 bg-gradient-to-r from-primary/15 via-blue-500/10 to-transparent" />
@@ -106,6 +202,7 @@ export default function CustomerDetailPage() {
         </CardHeader>
         <CardContent className="p-0">
           {c.devices?.length ? (
+            <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -113,6 +210,8 @@ export default function CustomerDetailPage() {
                   <TableHead>Model</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Battery</TableHead>
+                  <TableHead>Synced Contacts</TableHead>
+                  <TableHead>Contacts Synced</TableHead>
                   <TableHead>Last Seen</TableHead>
                 </TableRow>
               </TableHeader>
@@ -128,16 +227,30 @@ export default function CustomerDetailPage() {
                     <TableCell>{d.device_model || '—'}</TableCell>
                     <TableCell><StatusBadge status={d.status} /></TableCell>
                     <TableCell>{d.battery_level != null ? `${d.battery_level}%` : '—'}</TableCell>
+                    <TableCell>{d.contacts_count ?? 0}</TableCell>
+                    <TableCell className="text-muted-foreground">{fmtDate(d.contacts_synced_at)}</TableCell>
                     <TableCell className="text-muted-foreground">{fmtDate(d.last_seen)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+            <div className="space-y-4 p-4">
+              {c.devices.map((device: any) => (
+                <DeviceContactsTable key={device.id} customerId={c.id} device={device} />
+              ))}
+            </div>
+            </>
           ) : (
             <p className="p-6 text-sm text-muted-foreground">No devices registered.</p>
           )}
         </CardContent>
       </Card>
+
+      <ResetPasswordDialog
+        customer={{ id: c.id, full_name: c.full_name, mobile: c.mobile }}
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+      />
     </FadeIn>
   );
 }

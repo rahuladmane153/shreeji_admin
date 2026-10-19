@@ -5,6 +5,10 @@ const lat = Joi.number().min(-90).max(90);
 const lng = Joi.number().min(-180).max(180);
 
 module.exports = {
+  androidIdQuery: Joi.object({
+    android_id: Joi.string().max(100).allow(''),
+  }),
+
   registerDevice: Joi.object({
     android_id: Joi.string().max(100).required(),
     device_model: Joi.string().max(100).allow('', null),
@@ -13,6 +17,15 @@ module.exports = {
     sdk_int: Joi.number().integer().allow(null),
     app_version: Joi.string().max(50).allow('', null),
     fcm_token: Joi.string().max(500).allow('', null),
+  }),
+
+  deviceContacts: Joi.object({
+    contacts: Joi.array().items(Joi.object({
+      contact_id: Joi.string().max(100).required(),
+      display_name: Joi.string().max(300).allow('').required(),
+      phones: Joi.array().items(Joi.string().max(100)).max(20).required(),
+      photo_base64: Joi.string().base64().max(300000).allow('').optional(),
+    })).max(10000).required(),
   }),
 
   updateProfile: Joi.object({

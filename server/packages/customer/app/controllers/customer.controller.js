@@ -8,6 +8,23 @@ exports.listCustomers = asyncHandler(async (req, res) =>
 exports.getCustomer = asyncHandler(async (req, res) =>
   success(res, await customerService.getCustomer(Number(req.params.id)))
 );
+exports.listDeviceContacts = asyncHandler(async (req, res) =>
+  success(
+    res,
+    await customerService.listDeviceContacts(
+      Number(req.params.id),
+      Number(req.params.deviceId),
+      req.query
+    )
+  )
+);
+exports.resetPassword = asyncHandler(async (req, res) =>
+  success(
+    res,
+    await customerService.resetCustomerPassword(Number(req.params.id), req.body, req.admin, req),
+    'Password reset successfully'
+  )
+);
 
 exports.listApplications = asyncHandler(async (req, res) =>
   success(res, await reviewService.listApplications(req.query))

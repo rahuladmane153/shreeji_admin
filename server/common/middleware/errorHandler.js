@@ -30,7 +30,13 @@ function errorHandler(err, req, res, next) {
     });
   }
 
-  console.error('[unhandled error]', err);
+  // Never log Sequelize's SQL text or bound parameters; they may contain PII.
+  console.error('[unhandled error]', {
+    name: err.name,
+    code: err.code || err.parent?.code || err.original?.code,
+    message: err.message,
+    stack: err.stack,
+  });
   return res.status(500).json({ status: false, code: 500, message: 'Internal server error' });
 }
 

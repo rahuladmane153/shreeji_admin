@@ -60,7 +60,7 @@ async function auditLogs(query) {
       description: l.description,
       service: l.service,
       ip_address: l.ip_address,
-      created_at: l.created_at,
+      created_at: l.createdAt,
     })),
     meta: buildMeta(count, page, limit),
   };

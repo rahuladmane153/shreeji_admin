@@ -6,6 +6,7 @@ const { encrypt, decrypt, sha256, maskAadhaar } = require('../../../../common/_h
 const { toRelativePath, sha256File } = require('../../../../common/_helpers/upload');
 const { extractFromDocument } = require('../_helpers/ocr');
 const { verifyDocuments, compareNames } = require('../_helpers/verify');
+const { writeAudit } = require('../../../../common/_helpers/audit');
 const { REQUIRED_DOC_TYPES } = require('../../../../common/config/constant.config');
 
 const Customer = db.customers;
@@ -139,7 +140,7 @@ async function saveSelfie(customerId, deviceId, file, liveness) {
 }
 
 /** Saves the reviewed details and submits the application. */
-async function reviewAndSubmit(customerId, body) {
+async function reviewAndSubmit(customerId, body, req) {
   const app = await Application.findOne({ where: { customer_id: customerId } });
   if (!app) throw new AppError(400, 'Start your KYC by uploading documents first');
   assertEditable(app);
@@ -182,7 +183,18 @@ async function reviewAndSubmit(customerId, body) {
       return norm(given) !== norm(read);
     })
     .map(([key]) => key);
-  await refreshVerification(app, customerId, { edited_fields: editedFields });
+  const { verification } = await refreshVerification(app, customerId, { edited_fields: editedFields });
+
+  // Lands in the admin audit trail; the application itself now shows as
+  // "submitted" in the admin KYC queue for verification.
+  await writeAudit(db.audit_logs, {
+    actor: { type: 'customer', id: customerId, name: body.name_on_document || null },
+    action: 'kyc.submitted',
+    entity: { type: 'kyc_application', id: app.id },
+    description: `Document checks: ${verification.overall}${editedFields.length ? `; edited: ${editedFields.join(', ')}` : ''}`,
+    service: 'kyc-app',
+    req,
+  });
 
   await Customer.update(
     {
@@ -200,12 +212,22 @@ async function reviewAndSubmit(customerId, body) {
 async function getStatus(customerId) {
   const app = await Application.findOne({
     where: { customer_id: customerId },
-    include: [{ model: Document, as: 'documents', attributes: ['doc_type', 'file_path', 'created_at'] }],
+    include: [{ model: Document, as: 'documents', attributes: ['doc_type', 'file_path', 'ocr_data', 'createdAt'] }],
   });
 
   if (!app) {
-    return { kyc_status: 'not_started', application: null, documents: [] };
+    return {
+      kyc_status: 'not_started',
+      application: null,
+      documents: [],
+      required_documents: REQUIRED_DOC_TYPES,
+      verification: null,
+      prefill: null,
+    };
   }
+
+  const editable = ['in_progress', 'rejected'].includes(app.status);
+  const byType = Object.fromEntries((app.documents || []).map((d) => [d.doc_type, d.ocr_data?.fields || {}]));
 
   return {
     kyc_status: app.status,
@@ -222,11 +244,16 @@ async function getStatus(customerId) {
       review_remarks: app.review_remarks,
     },
     verification: app.ocr_data || null,
+    required_documents: REQUIRED_DOC_TYPES,
     documents: (app.documents || []).map((d) => ({
       doc_type: d.doc_type,
       file_url: `/uploads/${d.file_path}`,
-      uploaded_at: d.created_at,
+      uploaded_at: d.createdAt,
+      found: d.ocr_data?.found ?? 0,
+      total: d.ocr_data?.total ?? 0,
     })),
+    // Values to resume the review form with; only while the customer can still edit
+    prefill: editable ? buildPrefill(byType) : null,
   };
 }
 

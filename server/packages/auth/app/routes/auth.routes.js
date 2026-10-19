@@ -10,8 +10,7 @@ module.exports = (router) => {
 
   // Customer (mobile)
   router.post('/customer/register', validate(schema.customerRegister), ctrl.customerRegister);
-  router.post('/customer/send-otp', validate(schema.sendOtp), ctrl.sendOtp);
-  router.post('/customer/verify-otp', validate(schema.verifyOtp), ctrl.verifyOtp);
+  router.post('/customer/login', validate(schema.customerLogin), ctrl.customerLogin);
   router.post('/customer/refresh', validate(schema.refresh), ctrl.customerRefresh);
   router.post('/customer/logout', validate(schema.logout), ctrl.customerLogout);
 };

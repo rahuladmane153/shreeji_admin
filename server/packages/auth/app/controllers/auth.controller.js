@@ -15,13 +15,10 @@ exports.adminLogout = asyncHandler(async (req, res) =>
 
 // ---- Customer ----
 exports.customerRegister = asyncHandler(async (req, res) =>
-  success(res, await customerAuth.registerCustomer(req.body, req), 'Customer registered', 201)
+  success(res, await customerAuth.registerCustomer(req.body, req), 'Registration successful. Please login.', 201)
 );
-exports.sendOtp = asyncHandler(async (req, res) =>
-  success(res, await customerAuth.sendOtp(req.body, req), 'OTP sent')
-);
-exports.verifyOtp = asyncHandler(async (req, res) =>
-  success(res, await customerAuth.verifyOtp(req.body, req), 'OTP verified')
+exports.customerLogin = asyncHandler(async (req, res) =>
+  success(res, await customerAuth.login(req.body, req), 'Login successful')
 );
 exports.customerRefresh = asyncHandler(async (req, res) =>
   success(res, await customerAuth.refresh(req.body, req), 'Token refreshed')

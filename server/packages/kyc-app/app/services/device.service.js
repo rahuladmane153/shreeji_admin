@@ -40,6 +40,26 @@ async function registerDevice(customerId, body) {
   };
 }
 
+/** Whether this phone (by android_id) is registered to the customer. */
+async function deviceStatus(customerId, androidId) {
+  const device = androidId
+    ? await Device.findOne({ where: { customer_id: customerId, android_id: androidId } })
+    : null;
+  if (!device || device.status === 'revoked') return { registered: false, device: null };
+  return {
+    registered: true,
+    device: {
+      id: device.id,
+      device_id: device.device_id,
+      device_code: device.device_code,
+      status: device.status,
+      uninstall_protection: device.uninstall_protection,
+      registered_at: device.registered_at,
+      last_seen: device.last_seen,
+    },
+  };
+}
+
 async function getCustomerDevice(customerId, deviceId) {
   const device = await Device.findOne({ where: { id: deviceId, customer_id: customerId } });
   if (!device) throw new AppError(404, 'Device not found');
@@ -200,6 +220,7 @@ async function recordConsents(customerId, deviceId, { consents, app_version }, r
 
 module.exports = {
   registerDevice,
+  deviceStatus,
   getCustomerDevice,
   heartbeat,
   ingestLocations,

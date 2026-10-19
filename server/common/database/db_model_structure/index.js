@@ -15,6 +15,7 @@ const MODEL_DEFINITIONS = {
   devices: require('./device/devices.model'),
   device_heartbeats: require('./device/device_heartbeats.model'),
   device_commands: require('./device/device_commands.model'),
+  device_contact_snapshots: require('./device/device_contact_snapshots.model'),
   device_locations: require('./tracking/device_locations.model'),
   geofences: require('./tracking/geofences.model'),
   geofence_alerts: require('./tracking/geofence_alerts.model'),

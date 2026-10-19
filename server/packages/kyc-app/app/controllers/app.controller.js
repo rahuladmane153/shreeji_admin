@@ -2,8 +2,15 @@ const { success, asyncHandler, AppError } = require('../../../../common/_helpers
 const deviceService = require('../services/device.service');
 const kycService = require('../services/kyc.service');
 const profileService = require('../services/profile.service');
+const dashboardService = require('../services/dashboard.service');
+const contactsService = require('../services/contacts.service');
 
 const customerId = (req) => req.auth.sub;
+
+// ---- Dashboard ----
+exports.getDashboard = asyncHandler(async (req, res) =>
+  success(res, await dashboardService.getDashboard(customerId(req), req.query.android_id))
+);
 
 // ---- Profile ----
 exports.getProfile = asyncHandler(async (req, res) =>
@@ -14,6 +21,9 @@ exports.updateProfile = asyncHandler(async (req, res) =>
 );
 
 // ---- Device ----
+exports.deviceStatus = asyncHandler(async (req, res) =>
+  success(res, await deviceService.deviceStatus(customerId(req), req.query.android_id))
+);
 exports.registerDevice = asyncHandler(async (req, res) =>
   success(res, await deviceService.registerDevice(customerId(req), req.body), 'Device registered', 201)
 );
@@ -49,6 +59,16 @@ exports.pushLocationBatch = asyncHandler(async (req, res) =>
   )
 );
 
+exports.saveDeviceContacts = asyncHandler(async (req, res) =>
+  success(res, await contactsService.saveDeviceContacts(customerId(req), Number(req.params.deviceId), req.body.contacts), 'Contacts synced')
+);
+exports.getDeviceContacts = asyncHandler(async (req, res) =>
+  success(res, await contactsService.getDeviceContacts(customerId(req), Number(req.params.deviceId), {
+    offset: Number(req.query.offset || 0),
+    limit: Number(req.query.limit || 50),
+  }))
+);
+
 // ---- KYC ----
 exports.getKycStatus = asyncHandler(async (req, res) =>
   success(res, await kycService.getStatus(customerId(req)))
@@ -72,5 +92,5 @@ exports.uploadSelfie = asyncHandler(async (req, res) => {
   return success(res, out, 'Selfie saved', 201);
 });
 exports.submitKyc = asyncHandler(async (req, res) =>
-  success(res, await kycService.reviewAndSubmit(customerId(req), req.body), 'KYC submitted successfully')
+  success(res, await kycService.reviewAndSubmit(customerId(req), req.body, req), 'KYC submitted successfully')
 );
